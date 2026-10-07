@@ -1,0 +1,1250 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE LIST OF DOOM</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1e2330;
+      --muted: #667085;
+      --border: #d8dce8;
+      --primary: #5a63f6;
+      --danger: #e5484d;
+      --ok: #1f9d55;
+      --warn: #d97706;
+      --bad: #dc2626;
+      --shadow: 0 8px 24px rgba(20, 20, 43, 0.08);
+    }
+
+    html[data-theme="dark"] {
+      --bg: #0f1220;
+      --card: #181c2f;
+      --text: #edf1ff;
+      --muted: #9ca8cc;
+      --border: #303758;
+      --primary: #8d95ff;
+      --danger: #ff6b7a;
+      --ok: #29be74;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+    }
+
+    .sidebar {
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .brand { font-weight: 700; letter-spacing: 0.4px; }
+
+    .btn, button {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn:hover, button:hover { border-color: var(--primary); }
+    .btn.primary { background: var(--primary); color: white; border-color: var(--primary); }
+    .btn.ghost { background: transparent; }
+    .btn.danger { color: var(--danger); border-color: rgba(229, 72, 77, 0.45); }
+
+    .list-tab {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: transparent;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .list-tab.active {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 12%, transparent);
+    }
+
+    .main {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-left, .toolbar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: transparent;
+      color: var(--text);
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    .search-box { min-width: 220px; }
+
+    .progress-wrap { display: grid; gap: 6px; }
+    .progress-label { font-size: 13px; color: var(--muted); }
+    .progress {
+      width: 100%;
+      height: 12px;
+      background: color-mix(in srgb, var(--border) 45%, transparent);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress.small { height: 8px; margin-top: 6px; }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      transition: width 240ms ease, background-color 240ms ease;
+      border-radius: 999px;
+    }
+
+    .bar-bad { background: var(--bad); }
+    .bar-warn { background: var(--warn); }
+    .bar-ok { background: var(--ok); }
+
+    ul.todo-tree { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+    .item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+    }
+
+    .item.drag-over { outline: 2px dashed var(--primary); }
+
+    .item-row {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .title-input.done { text-decoration: line-through; opacity: 0.75; }
+    .item-meta { display: grid; grid-template-columns: 1fr 150px auto auto; gap: 8px; margin-top: 8px; }
+    .children { margin-top: 8px; padding-left: 18px; border-left: 2px solid color-mix(in srgb, var(--border) 60%, transparent); }
+    .arrow { width: 24px; height: 24px; display: grid; place-items: center; }
+    .counter { font-size: 12px; color: var(--muted); }
+
+    .pill-group { display: flex; gap: 6px; }
+    .pill.active { border-color: var(--primary); color: var(--primary); }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      padding: 12px;
+    }
+
+    .modal.open { display: flex; }
+
+    .modal-card {
+      width: min(960px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .message { font-size: 13px; color: var(--muted); min-height: 18px; }
+    .message.error { color: var(--danger); }
+
+    .celebrate {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      background: var(--ok);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      animation: pop 1200ms ease;
+      z-index: 30;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.8) translateY(-8px); opacity: 0; }
+      20% { transform: scale(1); opacity: 1; }
+      80% { opacity: 1; }
+      100% { transform: translateY(-4px); opacity: 0; }
+    }
+
+    @media (max-width: 940px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { border-right: 0; border-bottom: 1px solid var(--border); }
+      .item-meta { grid-template-columns: 1fr; }
+      .item-row { grid-template-columns: auto auto 1fr auto; }
+      .search-box { min-width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">☠️ THE LIST OF DOOM</div>
+      <button class="btn primary" id="newListBtn">+ New List</button>
+      <div id="listTabs"></div>
+      <hr style="border-color: var(--border); width: 100%; border-width: 1px 0 0 0;">
+      <button class="btn" id="themeBtn">Toggle Light/Dark</button>
+      <button class="btn" id="undoBtn">Undo Delete</button>
+      <small class="message">Tip: Enter = add, Tab = indent, Shift+Tab = outdent</small>
+    </aside>
+
+    <main class="main">
+      <section class="card toolbar">
+        <div class="toolbar-left">
+          <input id="listTitle" placeholder="List title" style="min-width: 220px;">
+          <input id="newRootTask" placeholder="Add root task and press Enter" style="min-width: 240px;">
+          <input id="searchInput" class="search-box" placeholder="Search tasks...">
+        </div>
+        <div class="toolbar-right">
+          <div class="pill-group" id="filterPills">
+            <button class="pill active" data-filter="all">All</button>
+            <button class="pill" data-filter="active">Active</button>
+            <button class="pill" data-filter="completed">Completed</button>
+          </div>
+          <button class="btn" id="importBtn">Import with AI</button>
+          <button class="btn" id="exportMdBtn">Export .md</button>
+          <button class="btn" id="exportJsonBtn">Export .json</button>
+        </div>
+      </section>
+
+      <section class="card progress-wrap">
+        <div class="progress-label" id="overallProgressLabel">0 of 0 tasks - 0%</div>
+        <div class="progress"><div id="overallBar" class="progress-bar bar-bad"></div></div>
+      </section>
+
+      <section class="card">
+        <ul class="todo-tree" id="todoTree"></ul>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="importModal">
+    <div class="modal-card">
+      <h3 style="margin-top: 0;">Import with AI</h3>
+      <div class="message">Supports .md, .txt, .csv, .json, .pdf, .docx</div>
+      <div class="drop-zone" id="dropZone">Drop a file here or choose one below</div>
+      <input type="file" id="fileInput" accept=".md,.txt,.csv,.json,.pdf,.docx" style="margin-top: 8px;">
+      <details style="margin-top: 8px;">
+        <summary>AI settings</summary>
+        <div style="display: grid; gap: 8px; margin-top: 8px;">
+          <input id="apiKeyInput" placeholder="OpenAI API key (stored locally)">
+          <input id="apiEndpointInput" placeholder="API endpoint" value="https://api.openai.com/v1/chat/completions">
+          <input id="apiModelInput" placeholder="Model" value="gpt-4o-mini">
+        </div>
+      </details>
+      <div class="message" id="importMessage"></div>
+
+      <h4>Preview</h4>
+      <input id="previewTitle" placeholder="Preview list title">
+      <ul class="todo-tree" id="previewTree" style="margin-top: 8px;"></ul>
+
+      <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap;">
+        <button class="btn" id="regenerateBtn">Regenerate with AI</button>
+        <button class="btn primary" id="confirmImportBtn">Confirm Import</button>
+        <button class="btn" id="closeImportBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /** Item schema: { id, text, note, done, due, collapsed, children[] } */
+    const STORAGE_KEY = 'the-list-of-doom-v1';
+    const AI_KEY = 'the-list-ai-config';
+
+    const state = {
+      lists: [],
+      activeListId: null,
+      filter: 'all',
+      search: '',
+      theme: 'light',
+      undoStack: [],
+      draggedId: null,
+      celebrationSeen: {},
+      importRawText: '',
+      importFileName: '',
+      previewList: { title: '', items: [] }
+    };
+
+    const els = {
+      listTabs: document.getElementById('listTabs'),
+      newListBtn: document.getElementById('newListBtn'),
+      themeBtn: document.getElementById('themeBtn'),
+      undoBtn: document.getElementById('undoBtn'),
+      listTitle: document.getElementById('listTitle'),
+      newRootTask: document.getElementById('newRootTask'),
+      searchInput: document.getElementById('searchInput'),
+      filterPills: document.getElementById('filterPills'),
+      todoTree: document.getElementById('todoTree'),
+      overallBar: document.getElementById('overallBar'),
+      overallProgressLabel: document.getElementById('overallProgressLabel'),
+      importBtn: document.getElementById('importBtn'),
+      exportMdBtn: document.getElementById('exportMdBtn'),
+      exportJsonBtn: document.getElementById('exportJsonBtn'),
+      importModal: document.getElementById('importModal'),
+      dropZone: document.getElementById('dropZone'),
+      fileInput: document.getElementById('fileInput'),
+      importMessage: document.getElementById('importMessage'),
+      previewTitle: document.getElementById('previewTitle'),
+      previewTree: document.getElementById('previewTree'),
+      regenerateBtn: document.getElementById('regenerateBtn'),
+      confirmImportBtn: document.getElementById('confirmImportBtn'),
+      closeImportBtn: document.getElementById('closeImportBtn'),
+      apiKeyInput: document.getElementById('apiKeyInput'),
+      apiEndpointInput: document.getElementById('apiEndpointInput'),
+      apiModelInput: document.getElementById('apiModelInput')
+    };
+
+    const uid = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    const newItem = (text = '') => ({ id: uid(), text, note: '', done: false, due: '', collapsed: false, children: [] });
+    const newList = (title = 'Untitled List') => ({ id: uid(), title, items: [] });
+
+    const clone = (value) => structuredClone ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+
+    function toast(text) {
+      const node = document.createElement('div');
+      node.className = 'celebrate';
+      node.textContent = text;
+      document.body.appendChild(node);
+      setTimeout(() => node.remove(), 1250);
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        lists: state.lists,
+        activeListId: state.activeListId,
+        filter: state.filter,
+        theme: state.theme
+      }));
+    }
+
+    function load() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          state.lists = Array.isArray(parsed.lists) ? parsed.lists : [];
+          state.activeListId = parsed.activeListId || null;
+          state.filter = parsed.filter || 'all';
+          state.theme = parsed.theme || 'light';
+        } catch (_) {}
+      }
+
+      if (!state.lists.length) {
+        const starter = newList('THE LIST OF DOOM');
+        starter.items.push(newItem('Add your first terrifying task'));
+        state.lists = [starter];
+        state.activeListId = starter.id;
+      }
+
+      if (!state.lists.find(l => l.id === state.activeListId)) state.activeListId = state.lists[0].id;
+      document.documentElement.setAttribute('data-theme', state.theme);
+
+      const ai = localStorage.getItem(AI_KEY);
+      if (ai) {
+        try {
+          const cfg = JSON.parse(ai);
+          els.apiKeyInput.value = cfg.key || '';
+          els.apiEndpointInput.value = cfg.endpoint || els.apiEndpointInput.value;
+          els.apiModelInput.value = cfg.model || els.apiModelInput.value;
+        } catch (_) {}
+      }
+    }
+
+    function activeList() {
+      return state.lists.find(l => l.id === state.activeListId);
+    }
+
+    function walk(items, fn, parent = null) {
+      items.forEach((item, index) => {
+        fn(item, index, items, parent);
+        walk(item.children || [], fn, item);
+      });
+    }
+
+    function findItemWithContext(items, id, parent = null) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.id === id) return { item, index: i, siblings: items, parent };
+        const nested = findItemWithContext(item.children || [], id, item);
+        if (nested) return nested;
+      }
+      return null;
+    }
+
+    function removeItemById(items, id) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].id === id) return items.splice(i, 1)[0];
+        const removed = removeItemById(items[i].children || [], id);
+        if (removed) return removed;
+      }
+      return null;
+    }
+
+    function isDescendant(parentItem, candidateId) {
+      let found = false;
+      walk(parentItem.children || [], (item) => {
+        if (item.id === candidateId) found = true;
+      });
+      return found;
+    }
+
+    function setDoneRecursive(item, value) {
+      item.done = value;
+      (item.children || []).forEach(child => setDoneRecursive(child, value));
+    }
+
+    function syncDoneFromChildren(items) {
+      items.forEach(item => {
+        if (item.children && item.children.length) {
+          syncDoneFromChildren(item.children);
+          item.done = item.children.every(c => c.done);
+        }
+      });
+    }
+
+    function leafStats(items) {
+      let done = 0;
+      let total = 0;
+      items.forEach(item => {
+        if (!item.children || item.children.length === 0) {
+          total += 1;
+          if (item.done) done += 1;
+        } else {
+          const s = leafStats(item.children);
+          done += s.done;
+          total += s.total;
+        }
+      });
+      return { done, total };
+    }
+
+    function barClass(percent) {
+      if (percent < 33) return 'bar-bad';
+      if (percent < 66) return 'bar-warn';
+      return 'bar-ok';
+    }
+
+    function evaluateVisible(item) {
+      const q = state.search.trim().toLowerCase();
+      const textMatch = !q || (item.text || '').toLowerCase().includes(q) || (item.note || '').toLowerCase().includes(q);
+      const childVisible = (item.children || []).some(child => evaluateVisible(child));
+
+      if (state.filter === 'all') return textMatch || childVisible;
+      if (state.filter === 'active') {
+        const isActive = !item.done;
+        return (textMatch && isActive) || childVisible;
+      }
+      const isDone = item.done;
+      return (textMatch && isDone) || childVisible;
+    }
+
+    function renderTabs() {
+      els.listTabs.innerHTML = '';
+      state.lists.forEach(list => {
+        const tab = document.createElement('div');
+        tab.className = `list-tab ${list.id === state.activeListId ? 'active' : ''}`;
+        const btn = document.createElement('button');
+        btn.className = 'btn ghost';
+        btn.style.flex = '1';
+        btn.style.textAlign = 'left';
+        btn.textContent = list.title;
+        btn.onclick = () => {
+          state.activeListId = list.id;
+          render();
+          save();
+        };
+
+        const del = document.createElement('button');
+        del.className = 'btn danger';
+        del.textContent = '✕';
+        del.onclick = () => {
+          if (state.lists.length <= 1) return alert('Keep at least one list.');
+          state.lists = state.lists.filter(l => l.id !== list.id);
+          if (state.activeListId === list.id) state.activeListId = state.lists[0].id;
+          render();
+          save();
+        };
+
+        tab.append(btn, del);
+        els.listTabs.appendChild(tab);
+      });
+    }
+
+    function addSibling(itemId) {
+      const list = activeList();
+      const ctx = findItemWithContext(list.items, itemId);
+      if (!ctx) return;
+      ctx.siblings.splice(ctx.index + 1, 0, newItem(''));
+      syncDoneFromChildren(list.items);
+      render();
+      save();
+    }
+
+    function indentItem(itemId) {
+      const list = activeList();
+      const ctx = findItemWithContext(list.items, itemId);
+      if (!ctx || ctx.index === 0) return;
+      const previous = ctx.siblings[ctx.index - 1];
+      const [current] = ctx.siblings.splice(ctx.index, 1);
+      previous.children = previous.children || [];
+      previous.children.push(current);
+      syncDoneFromChildren(list.items);
+      render();
+      save();
+    }
+
+    function outdentItem(itemId) {
+      const list = activeList();
+      const ctx = findItemWithContext(list.items, itemId);
+      if (!ctx || !ctx.parent) return;
+      const parentCtx = findItemWithContext(list.items, ctx.parent.id);
+      const [current] = ctx.siblings.splice(ctx.index, 1);
+      parentCtx.siblings.splice(parentCtx.index + 1, 0, current);
+      syncDoneFromChildren(list.items);
+      render();
+      save();
+    }
+
+    function moveByDrop(dragId, targetId, position) {
+      if (dragId === targetId) return;
+      const list = activeList();
+      const dragCtx = findItemWithContext(list.items, dragId);
+      const targetCtx = findItemWithContext(list.items, targetId);
+      if (!dragCtx || !targetCtx) return;
+      if (isDescendant(dragCtx.item, targetId)) return;
+
+      const moving = removeItemById(list.items, dragId);
+      const freshTarget = findItemWithContext(list.items, targetId);
+      if (!moving || !freshTarget) return;
+
+      const at = position === 'before' ? freshTarget.index : freshTarget.index + 1;
+      freshTarget.siblings.splice(at, 0, moving);
+      syncDoneFromChildren(list.items);
+      render();
+      save();
+    }
+
+    function removeItem(itemId) {
+      const list = activeList();
+      const ctx = findItemWithContext(list.items, itemId);
+      if (!ctx) return;
+      const removed = ctx.siblings.splice(ctx.index, 1)[0];
+      state.undoStack.push({ listId: list.id, parentId: ctx.parent ? ctx.parent.id : null, index: ctx.index, item: clone(removed) });
+      syncDoneFromChildren(list.items);
+      render();
+      save();
+    }
+
+    function undoDelete() {
+      const entry = state.undoStack.pop();
+      if (!entry) return;
+      const list = state.lists.find(l => l.id === entry.listId);
+      if (!list) return;
+
+      if (!entry.parentId) {
+        list.items.splice(Math.min(entry.index, list.items.length), 0, entry.item);
+      } else {
+        const parentCtx = findItemWithContext(list.items, entry.parentId);
+        if (!parentCtx) list.items.push(entry.item);
+        else parentCtx.item.children.splice(Math.min(entry.index, parentCtx.item.children.length), 0, entry.item);
+      }
+      syncDoneFromChildren(list.items);
+      render();
+      save();
+    }
+
+    function renderItem(item, depth = 0) {
+      if (!evaluateVisible(item)) return null;
+      const li = document.createElement('li');
+      li.className = 'item';
+      li.draggable = true;
+      li.dataset.itemId = item.id;
+
+      li.addEventListener('dragstart', (e) => {
+        state.draggedId = item.id;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.id);
+      });
+
+      li.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        li.classList.add('drag-over');
+      });
+
+      li.addEventListener('dragleave', () => li.classList.remove('drag-over'));
+      li.addEventListener('drop', (e) => {
+        e.preventDefault();
+        li.classList.remove('drag-over');
+        const rect = li.getBoundingClientRect();
+        const pos = (e.clientY - rect.top) < rect.height / 2 ? 'before' : 'after';
+        moveByDrop(state.draggedId, item.id, pos);
+      });
+
+      const row = document.createElement('div');
+      row.className = 'item-row';
+
+      const arrow = document.createElement('button');
+      arrow.className = 'btn ghost arrow';
+      arrow.textContent = item.children?.length ? (item.collapsed ? '▸' : '▾') : '•';
+      arrow.disabled = !item.children?.length;
+      arrow.onclick = () => {
+        item.collapsed = !item.collapsed;
+        render();
+        save();
+      };
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.checked = !!item.done;
+      check.onchange = () => {
+        setDoneRecursive(item, check.checked);
+        syncDoneFromChildren(activeList().items);
+        render();
+        save();
+      };
+
+      const title = document.createElement('input');
+      title.className = `title-input ${item.done ? 'done' : ''}`;
+      title.value = item.text || '';
+      title.placeholder = 'Task title';
+      title.oninput = () => {
+        item.text = title.value;
+        save();
+      };
+
+      title.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addSibling(item.id);
+        }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          if (e.shiftKey) outdentItem(item.id);
+          else indentItem(item.id);
+        }
+      };
+
+      const counter = document.createElement('span');
+      counter.className = 'counter';
+      if (item.children?.length) {
+        const stats = leafStats(item.children);
+        counter.textContent = `${stats.done}/${stats.total} done`;
+      }
+
+      const del = document.createElement('button');
+      del.className = 'btn danger';
+      del.textContent = 'Delete';
+      del.onclick = () => removeItem(item.id);
+
+      row.append(arrow, check, title, counter, del);
+
+      const meta = document.createElement('div');
+      meta.className = 'item-meta';
+
+      const note = document.createElement('textarea');
+      note.rows = 1;
+      note.placeholder = 'Optional note';
+      note.value = item.note || '';
+      note.oninput = () => {
+        item.note = note.value;
+        save();
+      };
+
+      const due = document.createElement('input');
+      due.type = 'date';
+      due.value = item.due || '';
+      due.oninput = () => {
+        item.due = due.value;
+        save();
+      };
+
+      const addChild = document.createElement('button');
+      addChild.className = 'btn';
+      addChild.textContent = '+ Child';
+      addChild.onclick = () => {
+        item.children = item.children || [];
+        item.children.push(newItem(''));
+        item.collapsed = false;
+        render();
+        save();
+      };
+
+      const indent = document.createElement('button');
+      indent.className = 'btn';
+      indent.textContent = '⇥';
+      indent.title = 'Indent';
+      indent.onclick = () => indentItem(item.id);
+
+      const outdent = document.createElement('button');
+      outdent.className = 'btn';
+      outdent.textContent = '⇤';
+      outdent.title = 'Outdent';
+      outdent.onclick = () => outdentItem(item.id);
+
+      const controls = document.createElement('div');
+      controls.style.display = 'flex';
+      controls.style.gap = '6px';
+      controls.append(indent, outdent, addChild);
+
+      meta.append(note, due, controls);
+
+      li.append(row, meta);
+
+      if (item.children?.length) {
+        const stats = leafStats(item.children);
+        const percent = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
+        const pWrap = document.createElement('div');
+        pWrap.className = 'progress small';
+        const bar = document.createElement('div');
+        bar.className = `progress-bar ${barClass(percent)}`;
+        bar.style.width = `${percent}%`;
+        pWrap.appendChild(bar);
+        li.appendChild(pWrap);
+      }
+
+      if (item.children?.length && !item.collapsed) {
+        const children = document.createElement('ul');
+        children.className = 'todo-tree children';
+        item.children.forEach(child => {
+          const node = renderItem(child, depth + 1);
+          if (node) children.appendChild(node);
+        });
+        if (children.children.length) li.appendChild(children);
+      }
+
+      return li;
+    }
+
+    function renderProgress() {
+      const list = activeList();
+      const stats = leafStats(list.items);
+      const percent = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
+      els.overallProgressLabel.textContent = `${stats.done} of ${stats.total} tasks - ${percent}%`;
+      els.overallBar.style.width = `${percent}%`;
+      els.overallBar.className = `progress-bar ${barClass(percent)}`;
+
+      if (percent === 100 && stats.total > 0 && !state.celebrationSeen[list.id]) {
+        state.celebrationSeen[list.id] = true;
+        toast('🎉 List complete! Doom defeated.');
+      }
+      if (percent < 100) state.celebrationSeen[list.id] = false;
+    }
+
+    function render() {
+      const list = activeList();
+      if (!list) return;
+      renderTabs();
+
+      els.listTitle.value = list.title;
+      els.searchInput.value = state.search;
+
+      [...els.filterPills.querySelectorAll('.pill')].forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === state.filter);
+      });
+
+      els.todoTree.innerHTML = '';
+      list.items.forEach(item => {
+        const node = renderItem(item);
+        if (node) els.todoTree.appendChild(node);
+      });
+      renderProgress();
+    }
+
+    function parseStructuredLines(content, fallbackTitle = 'Imported List') {
+      const lines = content.split(/\r?\n/).map(l => l.replace(/\t/g, '    '));
+      const clean = lines.filter(l => l.trim() !== '');
+      if (!clean.length) throw new Error('File is empty.');
+
+      const title = clean[0].replace(/^#+\s*/, '').trim() || fallbackTitle;
+      const taskLines = clean.slice(1);
+      if (!taskLines.length) throw new Error('No task lines found after title.');
+
+      const stack = [{ indent: -1, children: [] }];
+      for (const rawLine of taskLines) {
+        const match = rawLine.match(/^(\s*)(.*)$/);
+        const indent = match[1].length;
+        let text = match[2].trim();
+        if (!text) continue;
+
+        let done = false;
+        if (/^- \[x\]/i.test(text)) {
+          done = true;
+          text = text.replace(/^- \[[xX]\]\s*/, '');
+        } else {
+          text = text.replace(/^- \[[ ]\]\s*/, '').replace(/^-\s+/, '');
+          if (/\(already done\)|\bdone\b/i.test(text)) done = true;
+        }
+
+        const dueMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+        const item = {
+          id: uid(),
+          text,
+          note: '',
+          done,
+          due: dueMatch ? dueMatch[1] : '',
+          collapsed: false,
+          children: []
+        };
+
+        while (stack.length > 1 && indent <= stack[stack.length - 1].indent) stack.pop();
+        stack[stack.length - 1].children.push(item);
+        stack.push({ indent, children: item.children });
+      }
+
+      syncDoneFromChildren(stack[0].children);
+      return { title, items: stack[0].children };
+    }
+
+    function parseCsv(content, fallbackTitle = 'Imported CSV') {
+      const rows = content.split(/\r?\n/).filter(Boolean).map(r => r.split(',').map(c => c.trim()));
+      if (rows.length < 1) throw new Error('CSV appears empty.');
+      const header = rows[0].map(h => h.toLowerCase());
+      const title = fallbackTitle;
+      const items = [];
+
+      if (header.includes('text')) {
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row.length) continue;
+          const get = (k) => row[header.indexOf(k)] || '';
+          const level = Number(get('level') || 0);
+          const item = {
+            id: uid(),
+            text: get('text'),
+            note: get('note') || '',
+            done: ['1', 'true', 'yes', 'done', 'x'].includes((get('done') || '').toLowerCase()),
+            due: get('due') || '',
+            collapsed: false,
+            children: []
+          };
+
+          if (!item.text) continue;
+          if (!Number.isFinite(level) || level <= 0) {
+            items.push(item);
+          } else {
+            let parent = null;
+            let cursor = items;
+            for (let depth = 0; depth < level; depth++) {
+              parent = cursor[cursor.length - 1];
+              if (!parent) break;
+              cursor = parent.children;
+            }
+            (parent ? parent.children : items).push(item);
+          }
+        }
+      } else {
+        rows.forEach((r, i) => {
+          if (i === 0 && r[0].toLowerCase().includes('task')) return;
+          if (!r[0]) return;
+          items.push(newItem(r[0]));
+        });
+      }
+
+      if (!items.length) throw new Error('CSV parsing did not produce any tasks.');
+      syncDoneFromChildren(items);
+      return { title, items };
+    }
+
+    function normalizeImportedJson(data) {
+      if (!data || typeof data !== 'object') throw new Error('JSON must be an object.');
+      if (!Array.isArray(data.items)) throw new Error('JSON must contain items array.');
+
+      function norm(item) {
+        return {
+          id: uid(),
+          text: String(item.text || '').trim(),
+          note: String(item.note || ''),
+          done: !!item.done,
+          due: item.due ? String(item.due) : '',
+          collapsed: !!item.collapsed,
+          children: Array.isArray(item.children) ? item.children.map(norm) : []
+        };
+      }
+
+      const items = data.items.map(norm).filter(i => i.text);
+      if (!items.length) throw new Error('JSON contains no valid tasks.');
+      syncDoneFromChildren(items);
+      return { title: String(data.title || 'Imported List'), items };
+    }
+
+    async function extractFileText(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['md', 'txt', 'csv', 'json', 'pdf', 'docx'].includes(ext)) throw new Error('Unsupported file type.');
+      if (file.size === 0) throw new Error('File is empty.');
+      if (file.size > 5 * 1024 * 1024) throw new Error('File is too large. Maximum is 5MB.');
+
+      if (ext === 'pdf') {
+        const buffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+        let text = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          text += content.items.map(i => i.str).join(' ') + '\n';
+        }
+        return { text, ext };
+      }
+
+      if (ext === 'docx') {
+        const buffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: buffer });
+        return { text: result.value, ext };
+      }
+
+      return { text: await file.text(), ext };
+    }
+
+    function setImportMessage(message, isError = false) {
+      els.importMessage.textContent = message;
+      els.importMessage.classList.toggle('error', isError);
+    }
+
+    function renderPreviewItem(item, itemsRef) {
+      const li = document.createElement('li');
+      li.className = 'item';
+      const row = document.createElement('div');
+      row.className = 'item-row';
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.checked = !!item.done;
+      check.onchange = () => { item.done = check.checked; };
+
+      const title = document.createElement('input');
+      title.value = item.text;
+      title.oninput = () => { item.text = title.value; };
+
+      const del = document.createElement('button');
+      del.className = 'btn danger';
+      del.textContent = 'Remove';
+      del.onclick = () => {
+        const idx = itemsRef.indexOf(item);
+        if (idx >= 0) itemsRef.splice(idx, 1);
+        renderPreview();
+      };
+
+      row.append(document.createElement('span'), check, title, document.createElement('span'), del);
+      li.appendChild(row);
+
+      if (item.children?.length) {
+        const children = document.createElement('ul');
+        children.className = 'todo-tree children';
+        item.children.forEach(child => children.appendChild(renderPreviewItem(child, item.children)));
+        li.appendChild(children);
+      }
+      return li;
+    }
+
+    function renderPreview() {
+      els.previewTree.innerHTML = '';
+      state.previewList.items.forEach(item => els.previewTree.appendChild(renderPreviewItem(item, state.previewList.items)));
+      els.previewTitle.value = state.previewList.title || '';
+    }
+
+    function tryFastPath(text, ext, fileName) {
+      if (ext === 'json') return normalizeImportedJson(JSON.parse(text));
+      if (ext === 'csv') return parseCsv(text, fileName.replace(/\.[^.]+$/, ''));
+      if (ext === 'md' || ext === 'txt') return parseStructuredLines(text, fileName.replace(/\.[^.]+$/, ''));
+      throw new Error('Needs AI parsing.');
+    }
+
+    function extractJsonFromResponse(text) {
+      const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/^```/, '').replace(/```$/, '').trim();
+      return JSON.parse(cleaned);
+    }
+
+    async function generateWithAI(sourceText) {
+      const key = els.apiKeyInput.value.trim();
+      const endpoint = els.apiEndpointInput.value.trim();
+      const model = els.apiModelInput.value.trim();
+
+      if (!key || !endpoint || !model) throw new Error('Please provide AI API key, endpoint, and model.');
+      localStorage.setItem(AI_KEY, JSON.stringify({ key, endpoint, model }));
+
+      const systemPrompt = `You are a task extraction engine. Return ONLY valid JSON matching this schema:\n{\n  "title": "string",\n  "items": [\n    {\n      "text": "string",\n      "note": "string (optional)",\n      "done": false,\n      "due": "YYYY-MM-DD or empty",\n      "children": []\n    }\n  ]\n}\nRules: extract only implied actionable tasks, group related tasks under parents, split large tasks into subtasks where sensible, detect due dates and done status from text, do not invent tasks.`;
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'X-Api-Key': key,
+        'Authorization': 'Bearer ' + key
+      };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: sourceText.slice(0, 25000) }
+          ]
+        })
+      });
+
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`AI request failed (${res.status}). ${body.slice(0, 200)}`);
+      }
+
+      const data = await res.json();
+      const out = data.choices?.[0]?.message?.content;
+      if (!out) throw new Error('AI response was empty.');
+      const parsed = extractJsonFromResponse(out);
+      return normalizeImportedJson(parsed);
+    }
+
+    async function handleFile(file) {
+      try {
+        setImportMessage('Reading file...');
+        const { text, ext } = await extractFileText(file);
+        state.importRawText = text;
+        state.importFileName = file.name;
+
+        try {
+          state.previewList = tryFastPath(text, ext, file.name);
+          setImportMessage('Imported using fast-path parser. Review preview, then confirm.');
+        } catch (_) {
+          setImportMessage('Using AI to parse this file...');
+          state.previewList = await generateWithAI(text);
+          setImportMessage('AI import complete. Review preview, edit if needed, then confirm.');
+        }
+
+        renderPreview();
+      } catch (error) {
+        setImportMessage(error.message || 'Import failed. Please try again.', true);
+      }
+    }
+
+    function download(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function toPortableJson(list) {
+      const itemToSchema = (item) => ({
+        text: item.text,
+        note: item.note || '',
+        done: !!item.done,
+        due: item.due || '',
+        children: (item.children || []).map(itemToSchema)
+      });
+      return JSON.stringify({ title: list.title, items: list.items.map(itemToSchema) }, null, 2);
+    }
+
+    function toMarkdown(list) {
+      const lines = [list.title];
+      const walkMd = (items, depth = 0) => {
+        items.forEach(item => {
+          const done = item.done ? '[x]' : '[ ]';
+          const due = item.due ? ` (due ${item.due})` : '';
+          const note = item.note ? ` — ${item.note}` : '';
+          lines.push(`${'    '.repeat(depth)}- ${done} ${item.text}${due}${note}`);
+          if (item.children?.length) walkMd(item.children, depth + 1);
+        });
+      };
+      walkMd(list.items);
+      return lines.join('\n');
+    }
+
+    function bindEvents() {
+      els.newListBtn.onclick = () => {
+        const list = newList('New Doom List');
+        state.lists.push(list);
+        state.activeListId = list.id;
+        render();
+        save();
+      };
+
+      els.themeBtn.onclick = () => {
+        state.theme = state.theme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', state.theme);
+        save();
+      };
+
+      els.undoBtn.onclick = undoDelete;
+
+      els.listTitle.oninput = () => {
+        activeList().title = els.listTitle.value || 'Untitled List';
+        renderTabs();
+        save();
+      };
+
+      els.newRootTask.onkeydown = (e) => {
+        if (e.key === 'Enter' && els.newRootTask.value.trim()) {
+          activeList().items.push(newItem(els.newRootTask.value.trim()));
+          els.newRootTask.value = '';
+          syncDoneFromChildren(activeList().items);
+          render();
+          save();
+        }
+      };
+
+      els.searchInput.oninput = () => {
+        state.search = els.searchInput.value;
+        render();
+      };
+
+      els.filterPills.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-filter]');
+        if (!btn) return;
+        state.filter = btn.dataset.filter;
+        render();
+        save();
+      });
+
+      els.exportJsonBtn.onclick = () => {
+        const list = activeList();
+        download(`${list.title.replace(/\s+/g, '_') || 'list'}.json`, toPortableJson(list), 'application/json');
+      };
+
+      els.exportMdBtn.onclick = () => {
+        const list = activeList();
+        download(`${list.title.replace(/\s+/g, '_') || 'list'}.md`, toMarkdown(list), 'text/markdown');
+      };
+
+      els.importBtn.onclick = () => {
+        state.previewList = { title: '', items: [] };
+        renderPreview();
+        setImportMessage('');
+        els.importModal.classList.add('open');
+      };
+
+      els.closeImportBtn.onclick = () => els.importModal.classList.remove('open');
+      els.fileInput.onchange = () => {
+        const file = els.fileInput.files?.[0];
+        if (file) handleFile(file);
+      };
+
+      els.dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        els.dropZone.style.borderColor = 'var(--primary)';
+      });
+
+      els.dropZone.addEventListener('dragleave', () => {
+        els.dropZone.style.borderColor = 'var(--border)';
+      });
+
+      els.dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        els.dropZone.style.borderColor = 'var(--border)';
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleFile(file);
+      });
+
+      els.regenerateBtn.onclick = async () => {
+        if (!state.importRawText) return setImportMessage('Upload a file first.', true);
+        try {
+          setImportMessage('Regenerating with AI...');
+          state.previewList = await generateWithAI(state.importRawText);
+          renderPreview();
+          setImportMessage('AI preview regenerated.');
+        } catch (error) {
+          setImportMessage(error.message || 'Regenerate failed.', true);
+        }
+      };
+
+      els.previewTitle.oninput = () => {
+        state.previewList.title = els.previewTitle.value;
+      };
+
+      els.confirmImportBtn.onclick = () => {
+        if (!state.previewList.items.length) return setImportMessage('Nothing to import yet.', true);
+        const list = {
+          id: uid(),
+          title: els.previewTitle.value.trim() || state.previewList.title || 'Imported List',
+          items: clone(state.previewList.items)
+        };
+        syncDoneFromChildren(list.items);
+        state.lists.push(list);
+        state.activeListId = list.id;
+        els.importModal.classList.remove('open');
+        render();
+        save();
+      };
+
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          undoDelete();
+        }
+      });
+    }
+
+    load();
+    bindEvents();
+    render();
+  </script>
+</body>
+</html>
