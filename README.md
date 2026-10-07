@@ -57,3 +57,12 @@ No build step required.
    - open `http://localhost:8080`
 3. Data is saved in `localStorage`.
 4. For AI import on unstructured files, enter your API key/endpoint/model in the import modal.
+
+## Publish on GitHub Pages
+
+This repository includes a workflow at `.github/workflows/deploy-pages.yml` that deploys the site on every push to `main`.
+
+1. In GitHub, open **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push to `main` (or run the workflow manually from the **Actions** tab).
+4. Your app will be published at `https://<your-username>.github.io/THE-LIST/`.
